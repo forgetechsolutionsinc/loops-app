@@ -55,8 +55,8 @@ create table user_preferences (
 create table loops (
   id uuid primary key default gen_random_uuid(),
   activity_id int references activities(id),
-  day_of_week int not null,
-  time_slot text not null,
+  day_of_week int not null check (day_of_week between 0 and 6),
+  time_slot text not null check (time_slot in ('morning','afternoon','evening')),
   time_display text,
   venue_name text,
   venue_address text,
@@ -93,7 +93,7 @@ alter table loop_members enable row level security;
 alter table messages enable row level security;
 
 -- Profiles: users can read all, update own
-create policy "Profiles are viewable by everyone" on profiles for select using (true);
+create policy "Profiles are viewable by authenticated users" on profiles for select using (auth.uid() is not null);
 create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
 
 -- Activities: public read
@@ -104,7 +104,7 @@ create policy "Users can manage own preferences" on user_preferences for all usi
 
 -- Loops: everyone can read active
 create policy "Active loops are viewable" on loops for select using (status = 'active');
-create policy "Authenticated can create loops" on loops for insert with check (auth.role() = 'authenticated');
+create policy "Authenticated can create loops" on loops for insert with check (auth.uid() is not null);
 
 -- Loop members: viewable by loop members, joinable by authenticated
 create policy "Loop members are viewable" on loop_members for select using (true);

@@ -80,7 +80,7 @@ export default function DashboardPage() {
     const todayDay = today.getDay()
     const diff = (dayOfWeek - todayDay + 7) % 7
     const next = new Date(today)
-    next.setDate(today.getDate() + (diff === 0 ? 7 : diff))
+    next.setDate(today.getDate() + diff)
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     return `${DAYS[dayOfWeek].slice(0, 3)}, ${monthNames[next.getMonth()]} ${next.getDate()}`
   }

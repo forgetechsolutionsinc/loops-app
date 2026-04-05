@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { DAYS, TIME_SLOTS } from '@/lib/types'
@@ -26,6 +26,7 @@ export default function OnboardPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [locationSet, setLocationSet] = useState(false)
@@ -36,6 +37,21 @@ export default function OnboardPage() {
   const [schedules, setSchedules] = useState<ScheduleEntry[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function checkOnboarded() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.replace('/auth'); return }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarded')
+        .eq('id', user.id)
+        .single()
+      if (profile?.onboarded) { router.replace('/dashboard'); return }
+      setCheckingAuth(false)
+    }
+    checkOnboarded()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalSteps = 4
 
@@ -50,6 +66,7 @@ export default function OnboardPage() {
   }
 
   function requestLocation() {
+    if (!navigator.geolocation) return
     setLocationLoading(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -121,10 +138,12 @@ export default function OnboardPage() {
       if (profileError) throw profileError
 
       // Delete existing preferences
-      await supabase
+      const { error: deleteError } = await supabase
         .from('user_preferences')
         .delete()
         .eq('user_id', user.id)
+
+      if (deleteError) throw deleteError
 
       // Insert new preferences
       const prefs = schedules
@@ -157,6 +176,14 @@ export default function OnboardPage() {
     (step === 2 && selectedActivities.length >= 1) ||
     (step === 3 &&
       schedules.every((s) => s.dayOfWeek !== null && s.timeSlot !== null))
+
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-sage border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

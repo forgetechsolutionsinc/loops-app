@@ -90,9 +90,12 @@ export default function DiscoverPage() {
     }
   }, [filter, loading, fetchLoops])
 
+  const [joinError, setJoinError] = useState<string | null>(null)
+
   async function handleJoin(loopId: string) {
     if (!userId) return
     setJoiningId(loopId)
+    setJoinError(null)
 
     const { error } = await supabase
       .from('loop_members')
@@ -100,9 +103,11 @@ export default function DiscoverPage() {
 
     if (!error) {
       setJoinedIds((prev) => new Set([...prev, loopId]))
-      await fetchLoops()
+    } else {
+      setJoinError('Unable to join this loop. It may be full.')
     }
 
+    await fetchLoops()
     setJoiningId(null)
   }
 
@@ -170,6 +175,14 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+
+      {joinError && (
+        <div className="px-6">
+          <div className="mx-auto max-w-lg">
+            <p className="mb-4 rounded-xl bg-terra/10 px-4 py-2.5 text-sm text-terra">{joinError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Loop cards */}
       <main className="px-6 pb-12">

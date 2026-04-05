@@ -157,11 +157,16 @@ export default function LoopDetailPage() {
     const content = newMessage.trim()
     setNewMessage('')
 
-    await supabase.from('messages').insert({
+    const { error } = await supabase.from('messages').insert({
       loop_id: loopId,
       user_id: userId,
       content,
     })
+
+    if (error) {
+      setNewMessage(content)
+      console.error('Failed to send message:', error)
+    }
 
     setSending(false)
   }
@@ -171,7 +176,7 @@ export default function LoopDetailPage() {
     const todayDay = today.getDay()
     const diff = (dayOfWeek - todayDay + 7) % 7
     const next = new Date(today)
-    next.setDate(today.getDate() + (diff === 0 ? 7 : diff))
+    next.setDate(today.getDate() + diff)
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     return `${DAYS[dayOfWeek]}, ${monthNames[next.getMonth()]} ${next.getDate()}`
   }
