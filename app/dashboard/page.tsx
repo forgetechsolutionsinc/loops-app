@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import type { Loop, Profile } from '@/lib/types'
+import type { Loop, Message, Profile } from '@/lib/types'
 import { DAYS } from '@/lib/types'
 
 export default function DashboardPage() {
@@ -13,6 +13,8 @@ export default function DashboardPage() {
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loops, setLoops] = useState<Loop[]>([])
+  const [lastMessages, setLastMessages] = useState<Record<string, Message>>({})
+  const [unreadLoops, setUnreadLoops] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -66,6 +68,36 @@ export default function DashboardPage() {
               member_count: l.loop_members?.length ?? 0,
             }))
           )
+
+          // Fetch last message per loop for preview + unread detection
+          const msgMap: Record<string, Message> = {}
+          const unread = new Set<string>()
+          const lastReadMap: Record<string, string> = JSON.parse(
+            localStorage.getItem('loops_last_read') ?? '{}'
+          )
+
+          for (const lid of loopIds) {
+            const { data: msgs } = await supabase
+              .from('messages')
+              .select('*, profiles (name)')
+              .eq('loop_id', lid)
+              .order('created_at', { ascending: false })
+              .limit(1)
+
+            if (msgs && msgs.length > 0) {
+              const msg = msgs[0] as Message
+              msgMap[lid] = msg
+              const lastRead = lastReadMap[lid]
+              if (!lastRead || new Date(msg.created_at) > new Date(lastRead)) {
+                if (msg.user_id !== user.id) {
+                  unread.add(lid)
+                }
+              }
+            }
+          }
+
+          setLastMessages(msgMap)
+          setUnreadLoops(unread)
         }
       }
 
@@ -165,8 +197,13 @@ export default function DashboardPage() {
                 >
                   <div className="mb-3 flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-warm-light text-2xl">
+                      <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-warm-light text-2xl">
                         {loop.activities?.emoji}
+                        {unreadLoops.has(loop.id) && (
+                          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-terra">
+                            <span className="h-2 w-2 animate-ping rounded-full bg-terra opacity-75" />
+                          </span>
+                        )}
                       </span>
                       <div>
                         <h3 className="font-semibold text-foreground">
@@ -189,6 +226,15 @@ export default function DashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                       </svg>
                       {loop.venue_name}
+                    </p>
+                  )}
+
+                  {lastMessages[loop.id] && (
+                    <p className="mb-2 truncate text-sm text-muted">
+                      <span className="font-medium">
+                        {lastMessages[loop.id].profiles?.name?.split(' ')[0]}:
+                      </span>{' '}
+                      {lastMessages[loop.id].content}
                     </p>
                   )}
 
