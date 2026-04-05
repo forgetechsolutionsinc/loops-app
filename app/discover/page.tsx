@@ -238,9 +238,29 @@ export default function DiscoverPage() {
                     )}
 
                     <div className="flex items-center justify-between border-t border-warm-light pt-3">
-                      <span className="text-sm text-muted">
-                        {loop.member_count}/{loop.max_members} people
-                      </span>
+                      {(() => {
+                        const spotsLeft = loop.max_members - (loop.member_count ?? 0)
+                        if (spotsLeft <= 0) {
+                          return (
+                            <span className="text-sm font-medium text-muted">
+                              Group is full
+                            </span>
+                          )
+                        }
+                        if (spotsLeft <= 2) {
+                          return (
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-terra">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-terra animate-pulse" />
+                              {spotsLeft === 1 ? 'Last spot!' : `Only ${spotsLeft} spots left`}
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className="text-sm text-muted">
+                            {loop.member_count}/{loop.max_members} people
+                          </span>
+                        )
+                      })()}
 
                       {isJoined ? (
                         <Link
