@@ -420,11 +420,36 @@ export default function LoopDetailPage() {
             </div>
           </div>
 
-          {/* Members */}
+          {/* Members + social momentum */}
           <div className="mt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
-              Members ({members.length}/{loop.max_members})
-            </p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                Members ({members.length}/{loop.max_members})
+              </p>
+              {members.length < loop.max_members && (
+                <p className="text-xs font-medium text-sage-dark">
+                  {loop.max_members - members.length} more to full group
+                </p>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-3 h-2 overflow-hidden rounded-full bg-warm-light">
+              <div
+                className="h-full rounded-full bg-sage transition-all duration-500"
+                style={{ width: `${(members.length / loop.max_members) * 100}%` }}
+              />
+            </div>
+
+            {/* Momentum message */}
+            {members.length < loop.max_members && members.length >= 2 && (
+              <p className="mb-3 text-sm text-muted">
+                {members.length === loop.max_members - 1
+                  ? 'Almost there! One more person and your group is complete.'
+                  : `Your group is growing! ${members.length} people already joined.`}
+              </p>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {members.map((member, i) => (
                 <div

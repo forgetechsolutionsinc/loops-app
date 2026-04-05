@@ -91,18 +91,33 @@ export default function DiscoverPage() {
   }, [filter, loading, fetchLoops])
 
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [joinSuccess, setJoinSuccess] = useState<string | null>(null)
 
   async function handleJoin(loopId: string) {
     if (!userId) return
     setJoiningId(loopId)
     setJoinError(null)
+    setJoinSuccess(null)
 
+    const loop = loops.find((l) => l.id === loopId)
     const { error } = await supabase
       .from('loop_members')
       .insert({ loop_id: loopId, user_id: userId })
 
     if (!error) {
       setJoinedIds((prev) => new Set([...prev, loopId]))
+      if (loop) {
+        const newCount = (loop.member_count ?? 0) + 1
+        const remaining = loop.max_members - newCount
+        if (remaining === 0) {
+          setJoinSuccess("You completed the group! You're all set.")
+        } else if (remaining === 1) {
+          setJoinSuccess(`You're #${newCount}! Just 1 more person to go.`)
+        } else {
+          setJoinSuccess(`You're #${newCount}! ${remaining} more to a full group.`)
+        }
+        setTimeout(() => setJoinSuccess(null), 5000)
+      }
     } else {
       setJoinError('Unable to join this loop. It may be full.')
     }
@@ -180,6 +195,16 @@ export default function DiscoverPage() {
         <div className="px-6">
           <div className="mx-auto max-w-lg">
             <p className="mb-4 rounded-xl bg-terra/10 px-4 py-2.5 text-sm text-terra">{joinError}</p>
+          </div>
+        </div>
+      )}
+
+      {joinSuccess && (
+        <div className="px-6">
+          <div className="mx-auto max-w-lg">
+            <p className="mb-4 rounded-xl bg-sage-light px-4 py-2.5 text-sm font-medium text-sage-dark">
+              {joinSuccess}
+            </p>
           </div>
         </div>
       )}
