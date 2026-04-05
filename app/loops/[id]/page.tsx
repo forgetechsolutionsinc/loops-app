@@ -172,6 +172,13 @@ export default function LoopDetailPage() {
         setMessages(messageData as Message[])
       }
 
+      // Mark loop as read (for unread indicators on dashboard)
+      try {
+        const lastReadMap = JSON.parse(localStorage.getItem('loops_last_read') ?? '{}')
+        lastReadMap[loopId] = new Date().toISOString()
+        localStorage.setItem('loops_last_read', JSON.stringify(lastReadMap))
+      } catch { /* localStorage unavailable */ }
+
       setLoading(false)
     }
 
