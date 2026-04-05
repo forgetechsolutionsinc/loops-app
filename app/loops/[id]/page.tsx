@@ -242,7 +242,8 @@ export default function LoopDetailPage() {
   function getNextOccurrence(dayOfWeek: number): string {
     const today = new Date()
     const todayDay = today.getDay()
-    const diff = (dayOfWeek - todayDay + 7) % 7
+    let diff = (dayOfWeek - todayDay + 7) % 7
+    if (diff === 0) diff = 7
     const next = new Date(today)
     next.setDate(today.getDate() + diff)
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
