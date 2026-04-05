@@ -239,6 +239,18 @@ export default function LoopDetailPage() {
     setSending(false)
   }
 
+  function getWarmth(createdAt: string): { emoji: string; label: string; weeks: number } {
+    const created = new Date(createdAt)
+    const now = new Date()
+    const weeks = Math.floor((now.getTime() - created.getTime()) / (7 * 24 * 60 * 60 * 1000))
+
+    if (weeks < 1) return { emoji: '\u{1F331}', label: 'Just planted', weeks: 0 }
+    if (weeks < 3) return { emoji: '\u{1FAB4}', label: `${weeks}w together`, weeks }
+    if (weeks < 6) return { emoji: '\u{2600}\u{FE0F}', label: `${weeks}w together`, weeks }
+    if (weeks < 10) return { emoji: '\u{1F525}', label: `${weeks}w strong`, weeks }
+    return { emoji: '\u{1F49B}', label: `${weeks}w bonded`, weeks }
+  }
+
   function getNextOccurrence(dayOfWeek: number): string {
     const today = new Date()
     const todayDay = today.getDay()
@@ -323,15 +335,21 @@ export default function LoopDetailPage() {
             </div>
           </div>
 
-          {/* Next meetup */}
-          <div className="mt-4 rounded-xl bg-sage-light px-4 py-3">
-            <p className="text-sm">
-              <span className="font-medium text-sage-dark">Next meetup:</span>{' '}
-              <span className="text-foreground">
-                {getNextOccurrence(loop.day_of_week)}
-                {loop.time_display && `, ${loop.time_display}`}
-              </span>
-            </p>
+          {/* Next meetup + warmth */}
+          <div className="mt-4 flex gap-3">
+            <div className="flex-1 rounded-xl bg-sage-light px-4 py-3">
+              <p className="text-sm">
+                <span className="font-medium text-sage-dark">Next meetup:</span>{' '}
+                <span className="text-foreground">
+                  {getNextOccurrence(loop.day_of_week)}
+                  {loop.time_display && `, ${loop.time_display}`}
+                </span>
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-xl bg-warm-light px-4 py-3">
+              <span className="text-lg">{getWarmth(loop.created_at).emoji}</span>
+              <span className="text-xs font-medium text-warm">{getWarmth(loop.created_at).label}</span>
+            </div>
           </div>
 
           {/* RSVP — "Кто придёт?" */}

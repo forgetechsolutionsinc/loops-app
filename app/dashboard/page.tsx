@@ -75,6 +75,18 @@ export default function DashboardPage() {
     load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function getWarmth(createdAt: string): { emoji: string; label: string; weeks: number } {
+    const created = new Date(createdAt)
+    const now = new Date()
+    const weeks = Math.floor((now.getTime() - created.getTime()) / (7 * 24 * 60 * 60 * 1000))
+
+    if (weeks < 1) return { emoji: '\u{1F331}', label: 'Just planted', weeks: 0 }
+    if (weeks < 3) return { emoji: '\u{1FAB4}', label: `${weeks}w together`, weeks }
+    if (weeks < 6) return { emoji: '\u{2600}\u{FE0F}', label: `${weeks}w together`, weeks }
+    if (weeks < 10) return { emoji: '\u{1F525}', label: `${weeks}w strong`, weeks }
+    return { emoji: '\u{1F49B}', label: `${weeks}w bonded`, weeks }
+  }
+
   function getNextOccurrence(dayOfWeek: number): string {
     const today = new Date()
     const todayDay = today.getDay()
@@ -181,9 +193,20 @@ export default function DashboardPage() {
                   )}
 
                   <div className="flex items-center justify-between border-t border-warm-light pt-3">
-                    <p className="text-sm text-sage-dark font-medium">
-                      Next: {getNextOccurrence(loop.day_of_week)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm text-sage-dark font-medium">
+                        Next: {getNextOccurrence(loop.day_of_week)}
+                      </p>
+                      {(() => {
+                        const warmth = getWarmth(loop.created_at)
+                        return (
+                          <span className="flex items-center gap-1 rounded-full bg-warm-light px-2 py-0.5 text-xs text-warm">
+                            <span>{warmth.emoji}</span>
+                            <span>{warmth.label}</span>
+                          </span>
+                        )
+                      })()}
+                    </div>
                     <svg className="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
