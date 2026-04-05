@@ -59,6 +59,16 @@ export interface Message {
   profiles?: Profile
 }
 
+export interface Rsvp {
+  id: string
+  loop_id: string
+  user_id: string
+  week_date: string
+  status: 'going' | 'not_going'
+  created_at: string
+  profiles?: Pick<Profile, 'name'>
+}
+
 export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 export const TIME_SLOTS = [
   { value: 'morning' as const, label: 'Morning', time: '7-11am' },
