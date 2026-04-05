@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import type { Loop, Message, Profile } from '@/lib/types'
+import type { Loop, Message, Profile, Rsvp } from '@/lib/types'
 import { DAYS } from '@/lib/types'
 
 const INITIAL_COLORS = [
@@ -36,6 +36,9 @@ export default function LoopDetailPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
+  const [rsvps, setRsvps] = useState<Rsvp[]>([])
+  const [myRsvp, setMyRsvp] = useState<'going' | 'not_going' | null>(null)
+  const [rsvpLoading, setRsvpLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -43,6 +46,57 @@ export default function LoopDetailPage() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
+
+  function getNextWeekDate(dayOfWeek: number): string {
+    const today = new Date()
+    const todayDay = today.getDay()
+    let diff = (dayOfWeek - todayDay + 7) % 7
+    if (diff === 0) diff = 7
+    const next = new Date(today)
+    next.setDate(today.getDate() + diff)
+    const y = next.getFullYear()
+    const m = String(next.getMonth() + 1).padStart(2, '0')
+    const d = String(next.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  async function handleRsvp(status: 'going' | 'not_going') {
+    if (!userId || !loop || rsvpLoading) return
+    setRsvpLoading(true)
+
+    try {
+      const weekDate = getNextWeekDate(loop.day_of_week)
+
+      const { error } = myRsvp
+        ? await supabase
+            .from('rsvps')
+            .update({ status })
+            .eq('loop_id', loopId)
+            .eq('user_id', userId)
+            .eq('week_date', weekDate)
+        : await supabase
+            .from('rsvps')
+            .insert({ loop_id: loopId, user_id: userId, week_date: weekDate, status })
+
+      if (error) {
+        console.error('RSVP failed:', error)
+        return
+      }
+
+      setMyRsvp(status)
+
+      // Refresh RSVPs
+      const { data: rsvpData } = await supabase
+        .from('rsvps')
+        .select('*, profiles (name)')
+        .eq('loop_id', loopId)
+        .eq('week_date', weekDate)
+
+      if (rsvpData) setRsvps(rsvpData as Rsvp[])
+    } finally {
+      setRsvpLoading(false)
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -87,6 +141,20 @@ export default function LoopDetailPage() {
         setMembers(
           memberData as unknown as Array<{ user_id: string; profiles: Profile }>
         )
+      }
+
+      // Fetch RSVPs for the next occurrence
+      const weekDate = getNextWeekDate(loopData.day_of_week)
+      const { data: rsvpData } = await supabase
+        .from('rsvps')
+        .select('*, profiles (name)')
+        .eq('loop_id', loopId)
+        .eq('week_date', weekDate)
+
+      if (rsvpData) {
+        setRsvps(rsvpData as Rsvp[])
+        const mine = rsvpData.find((r) => r.user_id === user.id)
+        if (mine) setMyRsvp(mine.status as 'going' | 'not_going')
       }
 
       // Fetch messages
@@ -174,7 +242,8 @@ export default function LoopDetailPage() {
   function getNextOccurrence(dayOfWeek: number): string {
     const today = new Date()
     const todayDay = today.getDay()
-    const diff = (dayOfWeek - todayDay + 7) % 7
+    let diff = (dayOfWeek - todayDay + 7) % 7
+    if (diff === 0) diff = 7
     const next = new Date(today)
     next.setDate(today.getDate() + diff)
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -263,6 +332,67 @@ export default function LoopDetailPage() {
                 {loop.time_display && `, ${loop.time_display}`}
               </span>
             </p>
+          </div>
+
+          {/* RSVP — "Кто придёт?" */}
+          <div className="mt-4 rounded-xl border border-warm-light bg-background p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">
+                Who&apos;s coming?
+              </p>
+              {rsvps.filter((r) => r.status === 'going').length > 0 && (
+                <span className="rounded-full bg-sage-light px-2.5 py-0.5 text-xs font-medium text-sage-dark">
+                  {rsvps.filter((r) => r.status === 'going').length} going
+                </span>
+              )}
+            </div>
+
+            {/* Names of people who confirmed — social proof */}
+            {rsvps.filter((r) => r.status === 'going').length > 0 && (
+              <div className="mb-3">
+                <p className="text-sm text-muted">
+                  {rsvps
+                    .filter((r) => r.status === 'going')
+                    .map((r) => r.profiles?.name?.split(' ')[0] ?? 'Someone')
+                    .join(', ')}{' '}
+                  {rsvps.filter((r) => r.status === 'going').length === 1
+                    ? 'is'
+                    : 'are'}{' '}
+                  going.{' '}
+                  {!myRsvp && (
+                    <span className="font-medium text-sage-dark">
+                      Will you join them?
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* RSVP buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleRsvp('going')}
+                disabled={rsvpLoading}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-all ${
+                  myRsvp === 'going'
+                    ? 'bg-sage text-white'
+                    : 'bg-sage-light text-sage-dark hover:bg-sage hover:text-white'
+                }`}
+              >
+                {myRsvp === 'going' ? "I'm going!" : "I'll be there"}
+              </button>
+              <button
+                onClick={() => handleRsvp('not_going')}
+                disabled={rsvpLoading}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-all ${
+                  myRsvp === 'not_going'
+                    ? 'bg-warm-light text-terra'
+                    : 'bg-cream text-muted hover:bg-warm-light hover:text-terra'
+                }`}
+              >
+                Can&apos;t make it
+              </button>
+            </div>
           </div>
 
           {/* Members */}

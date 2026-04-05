@@ -120,8 +120,32 @@ create policy "Loop members can send messages" on messages for insert with check
   exists (select 1 from loop_members where loop_members.loop_id = messages.loop_id and loop_members.user_id = auth.uid())
 );
 
+-- RSVPs (weekly attendance confirmation)
+create table rsvps (
+  id uuid primary key default gen_random_uuid(),
+  loop_id uuid references loops(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  week_date date not null,
+  status text not null check (status in ('going', 'not_going')),
+  created_at timestamptz default now(),
+  unique(loop_id, user_id, week_date)
+);
+
+alter table rsvps enable row level security;
+
+create policy "RSVPs viewable by loop members" on rsvps for select using (
+  exists (select 1 from loop_members where loop_members.loop_id = rsvps.loop_id and loop_members.user_id = auth.uid())
+);
+create policy "Members can RSVP" on rsvps for insert with check (
+  auth.uid() = user_id and
+  exists (select 1 from loop_members where loop_members.loop_id = rsvps.loop_id and loop_members.user_id = auth.uid())
+);
+create policy "Members can update own RSVP" on rsvps for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Members can delete own RSVP" on rsvps for delete using (auth.uid() = user_id);
+
 -- Indexes
 create index idx_loop_members_loop on loop_members(loop_id);
 create index idx_loop_members_user on loop_members(user_id);
 create index idx_messages_loop on messages(loop_id);
 create index idx_user_preferences_user on user_preferences(user_id);
+create index idx_rsvps_loop_week on rsvps(loop_id, week_date);
